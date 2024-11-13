@@ -1,0 +1,211 @@
+@media (width>=767px) {
+  .hide_desktop {
+    display: none !important;
+  }
+}
+
+@media screen and (max-width: 1024px) {
+  /* login register */
+  .login-img,
+  .register-img {
+    display: none;
+  }
+}
+/* @media (width <=767px) { */
+@media screen and (max-width: 767px) {
+  .section_gap_mobile,
+  .mob_section_gap {
+    margin: 60px 0 !important;
+  }
+  #wstr-mulitcurrency {
+    display: none;
+  }
+  .mt_center {
+    text-align: center;
+  }
+  h1 {
+    font-size: 30px !important;
+  }
+  h2 {
+    font-size: 24px !important;
+  }
+  .ws_headers {
+    padding-bottom: 1.5rem !important;
+    padding-right: 15px !important;
+    padding-left: 15px !important;
+    background-position: 45% 75% !important;
+  }
+  .hide_mobile {
+    display: none !important;
+  }
+  .fd_mob_col {
+    flex-direction: column !important;
+  }
+  /* header */
+  .ws_headers h2.ws_mega_menu_button {
+    font-size: 0 !important;
+    padding: 24px;
+    background-position: left 14px center;
+    background-size: 20px;
+  }
+  .ws_header_cart .br_50 {
+    padding: 14px 18px !important;
+  }
+  .ws_header_right {
+    flex-direction: row-reverse;
+    gap: 8px;
+  }
+  .ws_mega_menu {
+    padding: 24px !important;
+  }
+  .ws_mega_menu .ws_mega_menu_container {
+    padding: 15px !important;
+  }
+  .ws_mega_menu .ws_mega_menu_row {
+    gap: 20px;
+    display: none;
+  }
+  .ws_mega_menu .wp-block-search__input {
+    background-color: #00214c;
+    padding: 12px 20px;
+    border-radius: 50px;
+    color: #fff;
+    font-size: 12px;
+    text-align: center;
+    position: static;
+  }
+
+  .ws_mega_menu_col figure {
+    padding: 20px 16px;
+    border-radius: 100px;
+    background-color: #f3f5fa;
+  }
+  .ws_mega_menu_first-col {
+    padding: 10px !important;
+  }
+  /* banner */
+  .ws_home_banner .wp-block-search button {
+    right: 5px;
+  }
+  .ws_home_banner::before {
+    height: 1000px;
+  }
+  .ws_home_banner {
+    background-size: auto !important;
+    padding-top: 30px !important;
+    padding-bottom: 30px !important;
+  }
+  .ws_home_banner .wp-block-search .wp-block-search__inside-wrapper {
+    width: 100% !important;
+  }
+  .banner-reviews .reviews-total {
+    justify-content: center;
+  }
+  input::placeholder {
+    font-size: 12px;
+  }
+  /* browse industry */
+  .ws-industry-wrapper .ws-industry_details {
+    padding: 20px;
+  }
+  .ws-industry-wrapper {
+    gap: 20px 12px;
+  }
+  /* footer */
+  .ws_pre_footer .is-layout-grid {
+    grid-template-columns: 1fr;
+  }
+  .ws_footer_menus .wp-block-column {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .ws_footer_menus .wp-block-column nav {
+    margin: 0;
+  }
+  .ws_footer_menus nav svg:not(.wp-block-navigation__responsive-close svg) {
+    display: none;
+  }
+  .ws_footer_menus nav button::after {
+    content: "\f054";
+    font-family: "Font Awesome 6 Free";
+    font-weight: 900;
+  }
+  .ws_footer_menus nav .has-modal-open button::after {
+    content: "";
+  }
+  .ws_footer_menus .wstr_footer_menu_lists {
+    border-bottom: 1px solid #cccccc;
+    padding-bottom: 20px;
+  }
+  .wstr_footer_copyright {
+    justify-content: center;
+  }
+  .wstr_subscribe p:nth-child(2):before {
+    left: 60px;
+  }
+  .wstr_subscribe p i {
+    left: 30%;
+    transform: translate(-30%, -30%);
+  }
+  .footer_subscribe .wp-block-group {
+    padding: 0 !important;
+  }
+
+  /* single page responsive */
+  .single-container.ws-container {
+    margin-top: 40px;
+  }
+  .single_domain_you_may_like .ws-cards-container {
+    width: calc(100% - 50px);
+  }
+  .single_domain_highlights,
+  .single_domain_tabs_container {
+    width: 100%;
+    padding: 20px;
+  }
+  .single_domain_progress_wrapper {
+    padding: 15px;
+  }
+  .single_domain_progress_wrapper .ws_flex {
+    flex-wrap: wrap;
+    gap: 15px;
+  }
+  .related_tag_list_wrapper {
+    flex-wrap: wrap;
+  }
+  .single_domain_progress_wrapper h4 {
+    text-align: center;
+  }
+  .single-container {
+    padding: 0 15px;
+  }
+  .single_domain_tabs_container ul.tabs {
+    justify-content: center;
+  }
+  .similar-industry-names-main,
+  .single_domain_you_may_like {
+    padding: 20px;
+  }
+  .single_domain_you_may_like .ws-cards-container-wrapper {
+    gap: 15px;
+  }
+  .single_domain_meta_search {
+    right: 20px;
+    gap: 5px;
+  }
+  .single_domain_details .ws-card-likes h6,
+  .single_domain_search i {
+    padding: 10px;
+    font-size: 14px;
+  }
+  .single_featured_image_footer span,
+  .single_featured_image_footer a {
+    flex: 1;
+    text-align: center;
+    justify-content: center;
+  }
+  .single_featured_image_footer {
+    padding: 15px;
+  }
+}

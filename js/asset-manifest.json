@@ -1,0 +1,18 @@
+{
+  "files": {
+    "main.css": "/wp-content/themes/webstarter/js/static/css/main.e44d8d4b.css",
+    "main.js": "/wp-content/themes/webstarter/js/static/js/main.123c64bb.js",
+    "static/media/add_domain_bg.png": "/wp-content/themes/webstarter/js/static/media/add_domain_bg.131b7b825b18539a1f6b.png",
+    "static/media/profile.jpg": "/wp-content/themes/webstarter/js/static/media/profile.28d8b9d430ab339085cd.jpg",
+    "static/media/media_setup_last_card.png": "/wp-content/themes/webstarter/js/static/media/media_setup_last_card.ca29b5b7a93491419d3d.png",
+    "static/media/domain_appraisal_heading_image.png": "/wp-content/themes/webstarter/js/static/media/domain_appraisal_heading_image.0ccfbfd406a53c911a9a.png",
+    "static/media/attach_audio_img.png": "/wp-content/themes/webstarter/js/static/media/attach_audio_img.3dc557cb162d717d72bc.png",
+    "index.html": "/wp-content/themes/webstarter/js/index.html",
+    "main.e44d8d4b.css.map": "/wp-content/themes/webstarter/js/static/css/main.e44d8d4b.css.map",
+    "main.123c64bb.js.map": "/wp-content/themes/webstarter/js/static/js/main.123c64bb.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e44d8d4b.css",
+    "static/js/main.123c64bb.js"
+  ]
+}
