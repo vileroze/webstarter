@@ -1,7 +1,7 @@
 <?php
 class wstr_shortcodes
 {
-    
+
     public function __construct()
     {
         add_shortcode('wstr_banner_reviews', array($this, 'wstr_banner_reviews_function'));
@@ -554,8 +554,23 @@ class wstr_shortcodes
                                 }
                             }
 
-                            echo '<button class="add-to-cart-btn" data-product-id="' . get_the_ID() . '" style="display: ' . ($in_cart ? 'none' : 'block') . '">ADD TO CART</button>';
-                            echo '<button class="remove-from-cart-btn" data-product-id="' . get_the_ID() . '" style="display: ' . ($in_cart ? 'block' : 'none') . '">REMOVE FROM CART</button>';
+                            $cart_has_intallment_product = false;
+                            //check if a product with installment payment option is in cart, if yes then set in cart 
+                            if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
+                                foreach ($_SESSION['cart'] as $product_id => [$payment_option, $installment_duration]) {
+                                    if ($payment_option == 'installment') {
+                                        $cart_has_intallment_product = true;
+                                    }
+                                }
+                            }
+
+                            if ($cart_has_intallment_product) {
+                                echo '<span class="cart_has_installment_product">NOTE: You need to checkout before you can add this product to your cart.</span>';
+                            }else{
+                                echo '<button class="add-to-cart-btn" data-product-id="' . get_the_ID() . '" style="display: ' . ($in_cart ? 'none' : 'block') . '">ADD TO CART</button>';
+                                echo '<button class="remove-from-cart-btn" data-product-id="' . get_the_ID() . '" style="display: ' . ($in_cart ? 'block' : 'none') . '">REMOVE FROM CART</button>';
+                            }
+                            
                             ?>
 
                             <!-- create radio buttons for payment options -->
@@ -1129,7 +1144,7 @@ class wstr_shortcodes
                 <a href="#" target="_blank" rel="noopener noreferrer" id="dpm-integration-checker">Preview payment methods by transaction</a>
             </p>
         </div>
-    <?php
+        <?php
         return ob_get_clean();
     }
 

@@ -496,6 +496,13 @@ function wstr_add_item_to_cart()
         $_SESSION['cart'] = [];
     }
 
+    foreach ($_SESSION['cart'] as $product_id => [$payment_option, $installment_duration]) {
+        if ($payment_option == 'installment') {
+            wp_send_json_success(wstr_retrieve_cart_items());
+            wp_die();
+        }
+    }
+
     $product_id = intval($_POST['product_id']);
     $payment_option = sanitize_text_field($_POST['payment_option']);
     $payment_duration = sanitize_text_field($_POST['installment_duration']);

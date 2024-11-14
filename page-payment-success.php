@@ -4,11 +4,10 @@ require_once get_template_directory() . '/stripe-php/init.php';
 require_once get_template_directory() . '/stripe-payment/stripe-secrets.php';
 
 
-
 $stripe = new \Stripe\StripeClient('sk_test_51QD2KcRu9HD10dVmDkweGKbZd9TqRLwsKff0TO3pwgQ3ql3mybiXpkEgIM5BqpbvI5W6RRAmYmyb29k5E2UMzGyl005yUkIvyD');
 
 function handle_payment_success()
-{
+{ 
     global $stripe;
     $output = [];
 
