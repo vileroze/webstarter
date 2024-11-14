@@ -540,59 +540,72 @@ class wstr_shortcodes
                             the_excerpt();
                             ?>
                         </div>
-                        <div class="wstr_payments">
-                            <h6>PAYMENT OPTIONS</h6>
 
-                            <?php
+                        <?php
+                        echo 'product: ' . get_the_ID();
+                        //check if product in stock
+                        $stock_status = get_post_meta(get_the_ID(), '_stock_status', true);
+                        $product_is_in_stock = $stock_status == 'instock' ? true : false;
 
-                            $in_cart = false;
-                            //check if product already in cart and show remove from cart button
-                            if (isset($_SESSION['cart'])) {
-                                $all_prodcut_ids = array_keys($_SESSION['cart']);
-                                if (in_array(get_the_ID(), $all_prodcut_ids)) {
-                                    $in_cart = true;
-                                }
-                            }
+                        if ($product_is_in_stock) { ?>
+                            <div class="wstr_payments">
+                                <h6>PAYMENT OPTIONS</h6>
 
-                            $cart_has_intallment_product = false;
-                            //check if a product with installment payment option is in cart, if yes then set in cart 
-                            if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
-                                foreach ($_SESSION['cart'] as $product_id => [$payment_option, $installment_duration]) {
-                                    if ($payment_option == 'installment') {
-                                        $cart_has_intallment_product = true;
+                                <?php
+
+                                
+
+                                $in_cart = false;
+                                //check if product already in cart and show remove from cart button
+                                if (isset($_SESSION['cart'])) {
+                                    $all_prodcut_ids = array_keys($_SESSION['cart']);
+                                    if (in_array(get_the_ID(), $all_prodcut_ids)) {
+                                        $in_cart = true;
                                     }
                                 }
-                            }
 
-                            if ($cart_has_intallment_product) {
-                                echo '<span class="cart_has_installment_product">NOTE: You need to checkout before you can add this product to your cart.</span>';
-                            }else{
-                                echo '<button class="add-to-cart-btn" data-product-id="' . get_the_ID() . '" style="display: ' . ($in_cart ? 'none' : 'block') . '">ADD TO CART</button>';
-                                echo '<button class="remove-from-cart-btn" data-product-id="' . get_the_ID() . '" style="display: ' . ($in_cart ? 'block' : 'none') . '">REMOVE FROM CART</button>';
-                            }
-                            
-                            ?>
+                                $cart_has_intallment_product = false;
+                                //check if a product with installment payment option is in cart, if yes then set in cart 
+                                if (isset($_SESSION['cart']) && !empty($_SESSION['cart'])) {
+                                    foreach ($_SESSION['cart'] as $product_id => [$payment_option, $installment_duration]) {
+                                        if ($payment_option == 'installment') {
+                                            $cart_has_intallment_product = true;
+                                        }
+                                    }
+                                }
 
-                            <!-- create radio buttons for payment options -->
-                            <input type="radio" name="payment_option" class="payment-option" value="full" id="full_payment" checked>
-                            <label for="full_payment">Full Payment</label>
-                            <br>
-                            <br>
-                            <input type="radio" name="payment_option" class="payment-option" value="installment" id="installment_payment">
-                            <label for="installment_payment">Installment Payment</label>
-                            <br>
-                            <br>
+                                if ($cart_has_intallment_product) {
+                                    echo '<span class="cart_has_installment_product">NOTE: You need to checkout before you can add this product to your cart.</span>';
+                                }else{
+                                    echo '<button class="add-to-cart-btn" data-product-id="' . get_the_ID() . '" style="display: ' . ($in_cart ? 'none' : 'block') . '">ADD TO CART</button>';
+                                    echo '<button class="remove-from-cart-btn" data-product-id="' . get_the_ID() . '" style="display: ' . ($in_cart ? 'block' : 'none') . '">REMOVE FROM CART</button>';
+                                }
+                                
+                                ?>
 
-                            <div id="installment_duration_options" style="display: none;">
-                                <input type="radio" name="installment_duration" class="installment_duration" value="3" id="three_months" checked>
-                                <label for="installment_duration">3 months</label>
-                                <input type="radio" name="installment_duration" class="installment_duration" value="6" id="six_months">
-                                <label for="installment_duration">6 months</label>
-                                <input type="radio" name="installment_duration" class="installment_duration" value="12" id="twelve_months">
-                                <label for="twelve_months">12 months</label>
+                                <!-- create radio buttons for payment options -->
+                                <input type="radio" name="payment_option" class="payment-option" value="full" id="full_payment" checked>
+                                <label for="full_payment">Full Payment</label>
+                                <br>
+                                <br>
+                                <input type="radio" name="payment_option" class="payment-option" value="installment" id="installment_payment">
+                                <label for="installment_payment">Installment Payment</label>
+                                <br>
+                                <br>
+
+                                <div id="installment_duration_options" style="display: none;">
+                                    <input type="radio" name="installment_duration" class="installment_duration" value="3" id="three_months" checked>
+                                    <label for="installment_duration">3 months</label>
+                                    <input type="radio" name="installment_duration" class="installment_duration" value="6" id="six_months">
+                                    <label for="installment_duration">6 months</label>
+                                    <input type="radio" name="installment_duration" class="installment_duration" value="12" id="twelve_months">
+                                    <label for="twelve_months">12 months</label>
+                                </div>
                             </div>
-                        </div>
                         <?php
+                        }else{
+                            echo "<h5>Domain has been sold and is no longer available</h5>";
+                        }
                         // the_content();
                         ?>
                     </div>

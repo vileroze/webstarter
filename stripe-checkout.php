@@ -22,6 +22,7 @@ function calculateOrderAmount($items)
     return $total;
 }
 
+
 function createCustomer($stripe, $email = null)
 {
     try {
@@ -37,37 +38,155 @@ function createCustomer($stripe, $email = null)
     }
 }
 
-function handleSubscriptionItems($stripe, $customerId) {
+function getProductMetadata($cart)
+{
+    $metadata = [];
+    $products = [];
+    $total_amount = 0;
+
+    foreach ($cart as $product_id => [$payment_option, $installment_duration]) {
+        $product = get_post($product_id);
+        $price = get_wstr_price_value($product->ID);
+
+        if ($payment_option !== 'installment') {
+            $total_amount += (int)($price * 100);
+        }
+
+        $products[] = [
+            'id' => $product_id,
+            'name' => $product->post_title,
+            'price' => $price,
+            'payment_type' => $payment_option,
+            'installment_duration' => $installment_duration
+        ];
+    }
+
+    // Convert product data to metadata format
+    $metadata['products_count'] = count($products);
+    $metadata['total_amount'] = $total_amount;
+
+    foreach ($products as $index => $product) {
+        $prefix = "product_{$index}_";
+        $metadata[$prefix . 'id'] = $product['id'];
+        $metadata[$prefix . 'name'] = $product['name'];
+        $metadata[$prefix . 'price'] = $product['price'];
+        $metadata[$prefix . 'payment_type'] = $product['payment_type'];
+        if ($product['payment_type'] === 'installment') {
+            $metadata[$prefix . 'installment_duration'] = $product['installment_duration'];
+        }
+    }
+
+    return $metadata;
+}
+
+
+function handleOneTimePayment($stripe, $customerId, $amount)
+{
     try {
-        $subscriptionItems = [];
         $cart = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
-        $maxInstallmentDuration = 0;
+        $line_items = [];
+        $metadata = [];
+        $total_amount = 0;
+        $product_index = 0;
 
-        // Debug logging
-        error_log('Starting subscription creation with cart: ' . json_encode($cart));
-
-        // First pass: collect all subscription items and find max duration
+        // Process each product individually
         foreach ($cart as $product_id => [$payment_option, $installment_duration]) {
-            if ($payment_option === 'installment') {
+            if ($payment_option !== 'installment') {
                 $product = get_post($product_id);
                 $price = get_wstr_price_value($product->ID);
-                
-                error_log("Processing product ID: {$product_id} with price: {$price} and duration: {$installment_duration}");
+                $amount_in_cents = (int)($price * 100);
 
-                // Create product
+                // Add to total amount
+                $total_amount += $amount_in_cents;
+
+                // Create metadata for this product
+                $prefix = "product_{$product_index}_";
+                $metadata[$prefix . 'id'] = $product_id;
+                $metadata[$prefix . 'name'] = $product->post_title;
+                $metadata[$prefix . 'price'] = $price;
+                $metadata[$prefix . 'payment_type'] = 'single';
+
+                // Create a Stripe Product and Price for each item
                 $stripeProduct = $stripe->products->create([
                     'name' => $product->post_title,
                     'metadata' => [
                         'wordpress_product_id' => $product_id
                     ]
                 ]);
-                
-                error_log("Created Stripe product: " . $stripeProduct->id);
 
-                // Calculate price amount in cents
+                $stripePrice = $stripe->prices->create([
+                    'unit_amount' => $amount_in_cents,
+                    'currency' => 'usd',
+                    'product' => $stripeProduct->id
+                ]);
+
+                $line_items[] = [
+                    'price' => $stripePrice->id,
+                    'quantity' => 1
+                ];
+
+                $product_index++;
+            }
+        }
+
+        // Add count of products to metadata
+        $metadata['products_count'] = $product_index;
+        $metadata['total_amount'] = $total_amount;
+
+        // Create payment intent with all products
+        $paymentIntent = $stripe->paymentIntents->create([
+            'amount' => $total_amount,
+            'currency' => 'usd',
+            'customer' => $customerId,
+            'metadata' => array_merge([
+                'cart_id' => session_id(),
+                'wordpress_user_id' => get_current_user_id(),
+                'payment_type' => 'single'
+            ], $metadata),
+            'description' => "Order with {$product_index} products"
+        ]);
+
+        // Log the payment intent creation
+        error_log('Created payment intent with metadata: ' . json_encode($metadata));
+
+        return $paymentIntent;
+    } catch (Exception $e) {
+        error_log('Error creating payment intent: ' . $e->getMessage());
+        throw $e;
+    }
+}
+
+
+function handleSubscriptionItems($stripe, $customerId) {
+    try {
+        $subscriptionItems = [];
+        $cart = isset($_SESSION['cart']) ? $_SESSION['cart'] : [];
+        $metadata = getProductMetadata($cart);
+        
+        // Process subscription items
+        foreach ($cart as $product_id => [$payment_option, $installment_duration]) {
+            if ($payment_option === 'installment') {
+                $product = get_post($product_id);
+                $price = get_wstr_price_value($product->ID);
+                
+                error_log("Processing subscription for product ID: {$product_id} with duration: {$installment_duration}");
+                
+                // Create product in Stripe
+                $stripeProduct = $stripe->products->create([
+                    'name' => $product->post_title,
+                    'metadata' => [
+                        'wordpress_product_id' => $product_id,
+                        'product_name' => $product->post_title,
+                        'payment_type' => 'installment',
+                        'total_installments' => $installment_duration,
+                        'original_price' => $price
+                    ]
+                ]);
+                
+                // Calculate monthly amount in cents
                 $monthlyAmount = ceil(($price / $installment_duration) * 100);
                 
-                // Create price
+                // Create price with recurring payments
                 $stripePrice = $stripe->prices->create([
                     'unit_amount' => $monthlyAmount,
                     'currency' => 'usd',
@@ -75,17 +194,17 @@ function handleSubscriptionItems($stripe, $customerId) {
                         'interval' => 'month',
                         'interval_count' => 1
                     ],
-                    'product' => $stripeProduct->id
+                    'product' => $stripeProduct->id,
+                    'metadata' => [
+                        'total_installments' => $installment_duration,
+                        'monthly_amount' => $monthlyAmount
+                    ]
                 ]);
-                
-                error_log("Created Stripe price: " . $stripePrice->id);
 
                 $subscriptionItems[] = [
                     'price' => $stripePrice->id,
                     'quantity' => 1
                 ];
-
-                $maxInstallmentDuration = max($maxInstallmentDuration, (int)$installment_duration);
             }
         }
 
@@ -93,15 +212,12 @@ function handleSubscriptionItems($stripe, $customerId) {
             throw new Exception('No subscription items to process');
         }
 
-        error_log("Creating subscription with items: " . json_encode($subscriptionItems));
-
-        // Get payment methods using the correct service
-        $paymentMethods = $stripe->paymentMethods->all([
-            'customer' => $customerId,
-            'type' => 'card'
-        ]);
-
-        // Create subscription with immediate confirmation
+        // Get the current date for cancellation calculation
+        $currentDate = new DateTime();
+        $endDate = clone $currentDate;
+        $endDate->modify("+{$installment_duration} months");
+        
+        // Create subscription that will automatically cancel
         $subscription = $stripe->subscriptions->create([
             'customer' => $customerId,
             'items' => $subscriptionItems,
@@ -110,46 +226,27 @@ function handleSubscriptionItems($stripe, $customerId) {
                 'payment_method_types' => ['card'],
                 'save_default_payment_method' => 'on_subscription'
             ],
+            'metadata' => array_merge([
+                'wordpress_user_id' => get_current_user_id(),
+                'total_installments' => $installment_duration,
+                'start_date' => $currentDate->format('Y-m-d'),
+                'end_date' => $endDate->format('Y-m-d'),
+                'installments_completed' => '0'
+            ], $metadata),
             'expand' => ['latest_invoice.payment_intent'],
-            'metadata' => [
-                'wordpress_user_id' => get_current_user_id()
-            ]
+            // Cancel subscription at end of installment period
+            'cancel_at' => $endDate->getTimestamp(),
+            // Trial period until first payment is confirmed
+            'trial_end' => 'now'
         ]);
 
-        error_log("Created subscription: " . json_encode($subscription));
-
-        // Verify subscription and payment intent
-        if (!$subscription) {
-            throw new Exception('Failed to create subscription');
-        }
-
-        if (!isset($subscription->latest_invoice) || 
-            !isset($subscription->latest_invoice->payment_intent)) {
-            throw new Exception('Subscription created but payment intent is missing');
-        }
-
-        // Create a new payment intent if not present
-        if (!isset($subscription->latest_invoice->payment_intent->client_secret)) {
-            error_log("Payment intent missing, creating new one");
-            
-            $paymentIntent = $stripe->paymentIntents->create([
-                'amount' => $subscription->items->data[0]->price->unit_amount,
-                'currency' => 'usd',
-                'customer' => $customerId,
-                'payment_method_types' => ['card'],
-                'setup_future_usage' => 'off_session',
-                'metadata' => [
-                    'subscription_id' => $subscription->id
-                ]
-            ]);
-
-            // Update subscription with new payment intent
-            $stripe->subscriptions->update($subscription->id, [
-                'default_payment_method' => $paymentIntent->payment_method
-            ]);
-
-            $subscription->latest_invoice->payment_intent = $paymentIntent;
-        }
+        // Store subscription details in WordPress for tracking
+        update_user_meta(get_current_user_id(), 'stripe_subscription_' . $subscription->id, [
+            'total_installments' => $installment_duration,
+            'start_date' => $currentDate->format('Y-m-d'),
+            'end_date' => $endDate->format('Y-m-d'),
+            'installments_completed' => 0
+        ]);
 
         return $subscription;
 
@@ -161,20 +258,12 @@ function handleSubscriptionItems($stripe, $customerId) {
 }
 
 
-// Add webhook handling for subscription events
-add_action('rest_api_init', function () {
-    register_rest_route('stripe/v1', '/webhook', array(
-        'methods' => 'POST',
-        'callback' => 'handle_stripe_webhook',
-        'permission_callback' => '__return_true'
-    ));
-});
 
 function handle_stripe_webhook(WP_REST_Request $request)
 {
     $payload = $request->get_body();
     $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'];
-    $endpoint_secret = 'your_webhook_signing_secret'; // Set this in your WordPress configuration
+    $endpoint_secret = 'your_webhook_signing_secret';
 
     try {
         $event = \Stripe\Webhook::constructEvent(
@@ -186,26 +275,83 @@ function handle_stripe_webhook(WP_REST_Request $request)
         return new WP_Error('webhook_error', $e->getMessage(), array('status' => 400));
     }
 
-    // Handle specific events
+    global $stripe;
+
     switch ($event->type) {
+        case 'invoice.paid':
+            $invoice = $event->data->object;
+            $subscription_id = $invoice->subscription;
+
+            if ($subscription_id) {
+                try {
+                    // Get subscription details
+                    $subscription = $stripe->subscriptions->retrieve($subscription_id);
+                    $metadata = $subscription->metadata;
+
+                    // Update installments count
+                    $installments_completed = isset($metadata->installments_completed)
+                        ? ((int)$metadata->installments_completed + 1)
+                        : 1;
+
+                    // Update subscription metadata
+                    $stripe->subscriptions->update($subscription_id, [
+                        'metadata' => array_merge($metadata->toArray(), [
+                            'installments_completed' => $installments_completed
+                        ])
+                    ]);
+
+                    // Update WordPress metadata
+                    $wordpress_user_id = $metadata->wordpress_user_id;
+                    $subscription_meta = get_user_meta($wordpress_user_id, 'stripe_subscription_' . $subscription_id, true);
+                    if ($subscription_meta) {
+                        $subscription_meta['installments_completed'] = $installments_completed;
+                        update_user_meta($wordpress_user_id, 'stripe_subscription_' . $subscription_id, $subscription_meta);
+                    }
+
+                    // Check if all installments are completed
+                    if ($installments_completed >= (int)$metadata->total_installments) {
+                        // Mark products as out of stock
+                        $products_count = isset($metadata->products_count) ? (int)$metadata->products_count : 0;
+
+                        for ($i = 0; $i < $products_count; $i++) {
+                            $prefix = "product_{$i}_";
+                            $product_id = $metadata->{$prefix . 'id'};
+
+                            if ($product_id) {
+                                update_post_meta($product_id, '_stock_status', 'outofstock');
+                                update_post_meta($product_id, '_stock', '0');
+                            }
+                        }
+
+                        // Cancel subscription if not already cancelled
+                        if ($subscription->status !== 'canceled') {
+                            $stripe->subscriptions->cancel($subscription_id);
+                        }
+                    }
+                } catch (Exception $e) {
+                    error_log('Error processing subscription payment: ' . $e->getMessage());
+                }
+            }
+            break;
+
         case 'invoice.payment_failed':
             $invoice = $event->data->object;
-            // Send email to customer about failed payment
+            // Send email to customer
             wp_mail(
                 $invoice->customer_email,
                 'Payment Failed',
-                'Your payment for the recent installment has failed. Please update your payment method.'
+                'Your installment payment has failed. Please update your payment method to continue with your purchase.'
             );
             break;
 
         case 'customer.subscription.deleted':
             $subscription = $event->data->object;
-            // Handle subscription completion
-            update_user_meta(
-                $subscription->metadata->wordpress_user_id,
-                'subscription_completed_' . $subscription->id,
-                current_time('mysql')
-            );
+            $metadata = $subscription->metadata;
+
+            // Final cleanup if needed
+            if ($metadata && isset($metadata->wordpress_user_id)) {
+                delete_user_meta($metadata->wordpress_user_id, 'stripe_subscription_' . $subscription->id);
+            }
             break;
     }
 
@@ -213,23 +359,18 @@ function handle_stripe_webhook(WP_REST_Request $request)
 }
 
 
-function handleOneTimePayment($stripe, $customerId, $amount)
-{
-    try {
-        return $stripe->paymentIntents->create([
-            'amount' => $amount,
-            'currency' => 'usd',
-            'customer' => $customerId,
-            'metadata' => [
-                'cart_id' => session_id(),
-                'wordpress_user_id' => get_current_user_id()
-            ]
-        ]);
-    } catch (Exception $e) {
-        error_log('Error creating payment intent: ' . $e->getMessage());
-        throw $e;
-    }
-}
+// Register webhook endpoint
+add_action('rest_api_init', function () {
+    register_rest_route('stripe/v1', '/webhook', array(
+        'methods' => 'POST',
+        'callback' => 'handle_stripe_webhook',
+        'permission_callback' => '__return_true'
+    ));
+});
+
+
+
+
 
 header('Content-Type: application/json');
 
@@ -257,18 +398,18 @@ try {
     if ($hasSubscription) {
         try {
             $subscription = handleSubscriptionItems($stripe, $customer->id);
-    
+
             if (!$subscription) {
                 throw new Exception('No subscription created');
             }
-    
+
             // Log the full subscription object for debugging
-            error_log('Full subscription object: '. json_encode($subscription));
-    
+            error_log('Full subscription object: ' . json_encode($subscription));
+
             // Check if we need to create a payment intent
             if (!isset($subscription->latest_invoice) || !isset($subscription->latest_invoice->payment_intent) || !isset($subscription->latest_invoice->payment_intent->client_secret)) {
                 error_log('Missing required fields in subscription response');
-                
+
                 // Create a payment intent for the first payment after trial
                 $paymentIntent = $stripe->paymentIntents->create([
                     'amount' => isset($subscription->items->data[0]->price->unit_amount) ? $subscription->items->data[0]->price->unit_amount : 0,
@@ -279,9 +420,9 @@ try {
                         'customer_id' => $customer->id
                     ]
                 ]);
-    
-                error_log('Created payment intent: '. json_encode($paymentIntent));
-    
+
+                error_log('Created payment intent: ' . json_encode($paymentIntent));
+
                 echo json_encode([
                     'clientSecret' => $paymentIntent->client_secret,
                     'subscriptionId' => $subscription->id,
@@ -299,7 +440,7 @@ try {
             }
         } catch (Exception $e) {
             http_response_code(500);
-            error_log('Error creating subscription: '. $e->getMessage());
+            error_log('Error creating subscription: ' . $e->getMessage());
             echo json_encode([
                 'error' => $e->getMessage()
             ]);
